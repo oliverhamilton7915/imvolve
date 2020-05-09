@@ -17,13 +17,13 @@ class ImageEvolve:
         # Create candidate and set configs
         self.candidate_array = np.ones(shape=self.goal_dim)
         self.squared_error = self.compute_squared_error([0, 0, self.goal_dim[0], self.goal_dim[1]])
-        self.snapshot_file_names = []
-        self.snapshot_dir = './snapshots/'
         self.gif_dir = './gifs/'
+        self.image_cache = []
         self.rec_config = {
             'radius_lower_bound': 50,
             'radius_upper_bound': 200,
         }
+        
 
     # Use self.rec_config to generate a random rectangle
     def random_rectangle(self):
@@ -95,30 +95,23 @@ class ImageEvolve:
                 costs.append(self.squared_error)
             if not i % max(1, int(iterations * 0.05)):
                 print('Iteration:', i, '--', len(costs) - 1, 'added shapes.')
-                file_name = 'snapshot_iter_' + str(i) + '.png'
-                self.save_image(file_name)
-                self.snapshot_file_names.append(file_name)
+                self.cache_image()
 
         self.compile_gif_and_save(self.source_url + '_' + str(iterations) + '_iterations.gif')
         plt.plot(costs)
         plt.show()
 
-    # This method appends file name to the appropriate project directory and saves a temporary image snapshot
-    def save_image(self, name):
+    # This method caches an array of pixel values in the `image_cache` state variable
+    def cache_image(self):
         proxy_image = (255.0 * self.candidate_array).astype(np.uint8)
-        proxy_image = Image.fromarray(proxy_image)
-        proxy_image.save(self.snapshot_dir + name)
-        print('Image snapshot saved to: ' + self.snapshot_dir + name)
+        self.image_cache.append(proxy_image)
 
-    # This method deletes all saved image snapshots and creates a gif out of them
+    # This method retrieves all cached images and creates a gif out of them
     def compile_gif_and_save(self, name):
-        images = []
-        for filename in self.snapshot_file_names:
-            images.append(imageio.imread(self.snapshot_dir + filename))
-            os.remove(self.snapshot_dir + filename)  # Delete the saved image once it finds its home in the GIF
-        imageio.mimsave(self.gif_dir + name, images)  # Save the GIF
-
+        images = [Image.fromarray(im) for im in self.image_cache] # generate image for each cached array
+        imageio.mimsave(self.gif_dir + name, images) # save images as gif
+        
 
 if __name__ == '__main__':
     evolve = ImageEvolve('large_demo_2880x1490.jpg')
-    evolve.adapt_image(10000)
+    evolve.adapt_image(10_000)
